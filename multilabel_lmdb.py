@@ -8,11 +8,12 @@ import lmdb
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Create lmdbs for multilabel classification task')
-    parser.add_argument('--name', default=None, help='LMDB name')
-    parser.add_argument('--resize', default=None, help='Image size to resize "w,h"')
-    parser.add_argument('--image_root', default='', help='Root path to images in listfile')
-    parser.add_argument('--padding', action='store_true', help='Zero padding to image (for ground truth)')
-    parser.add_argument('--verbose', action='store_true', help='Print logs to stdout')
+    parser.add_argument('-n', '--name', default=None, help='LMDB name')
+    parser.add_argument('-s', '--resize', default=None, help='Image size to resize "w,h"')
+    parser.add_argument('-r', '--image_root', default='', help='Root path to images in listfile')
+    parser.add_argument('-g', '--gt', action='store_true', help='Create segmentation ground truth as label DB')
+    parser.add_argument('-p', '--padding', action='store_true', help='Zero padding to image (for ground truth)')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Print logs to stdout')
     parser.add_argument('listfile', help='Path to listfile')
 
     return parser.parse_args()
@@ -94,12 +95,14 @@ def label_parser(line, args):
     return np.array([[labels]])     # Shape: (C=1,H=1,W=labels)
 
 
-def get_parser(dbtype):
+def get_parser(dbtype, args):
     if not dbtype in ['image', 'label']:
         raise 'Invalid dbtype=%d' % dbtype
     if dbtype == 'image':
         return image_parser
     if dbtype == 'label':
+        if args.gt:
+            return groundtruth_image_parser
         return label_parser
 
 
@@ -143,7 +146,7 @@ def main():
     skips = []
     for dbtype in ['image', 'label']:
         name = dbname(args)
-        parser = get_parser(dbtype)
+        parser = get_parser(dbtype, args)
 
         with open(args.listfile) as fp:
             write_lmdb(name, parser, fp, skips, args)
